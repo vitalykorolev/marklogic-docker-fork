@@ -11,8 +11,7 @@ LABEL "com.marklogic.maintainer"="docker@marklogic.com"
 # install libnsl rpm package
 ###############################################################
 
-RUN microdnf -y update \
-    && rpm -i https://download.rockylinux.org/pub/rocky/9/BaseOS/x86_64/os/Packages/l/libnsl-2.34-168.el9_6.24.x86_64.rpm
+RUN rpm -i https://download.rockylinux.org/vault/rocky/9.6/BaseOS/x86_64/os/Packages/l/libnsl-2.34-168.el9_6.23.x86_64.rpm
 
 ###############################################################
 # install networking, base deps and tzdata for timezone
