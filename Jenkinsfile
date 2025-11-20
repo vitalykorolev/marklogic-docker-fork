@@ -205,14 +205,14 @@ void copyRPMs() {
     sh """
         cd src
         if [ -z ${env.ML_RPM} ]; then
-            wget --no-verbose https://bed-artifactory.bedford.progress.com:443/artifactory/ml-rpm-tierpoint/${RPMbranch}/server/MarkLogic-${RPMversion}${RPMsuffix}.x86_64.rpm
+            wget --no-check-certificate --no-verbose https://bed-artifactory.bedford.progress.com:443/artifactory/ml-rpm-tierpoint/${RPMbranch}/server/MarkLogic-${RPMversion}${RPMsuffix}.x86_64.rpm
         else
-            wget --no-verbose ${ML_RPM}
+            wget --no-check-certificate --no-verbose ${ML_RPM}
         fi
         if [ -z ${env.ML_CONVERTERS}]; then
-            wget --no-verbose https://bed-artifactory.bedford.progress.com:443/artifactory/ml-rpm-tierpoint/${RPMbranch}/converters/MarkLogicConverters-${RPMversion}${RPMsuffix}.x86_64.rpm
+            wget --no-check-certificate --no-verbose https://bed-artifactory.bedford.progress.com:443/artifactory/ml-rpm-tierpoint/${RPMbranch}/converters/MarkLogicConverters-${RPMversion}${RPMsuffix}.x86_64.rpm
         else
-            wget --no-verbose ${ML_CONVERTERS}
+            wget --no-check-certificate --no-verbose ${ML_CONVERTERS}
         fi
     """
     script {
