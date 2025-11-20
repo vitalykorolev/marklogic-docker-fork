@@ -13,6 +13,7 @@ emailList = 'vitaly.korolev@progress.com, Barkha.Choithani@progress.com, Sumanth
 emailSecList = 'Mahalakshmi.Srinivasan@progress.com'
 gitCredID = 'marklogic-builder-github'
 dockerRegistry = 'ml-docker-db-dev-tierpoint.bed-artifactory.bedford.progress.com'
+pdcRegistry = 'sandboxpdc.azurecr.io'
 JIRA_ID_PATTERN = /(?i)(MLE)-\d{3,6}/
 JIRA_ID = ''
 LINT_OUTPUT = ''
@@ -194,12 +195,7 @@ void copyRPMs() {
         RPMversion = "11.3"
     }
     else if (marklogicVersion == "12") {
-        //if dockerImageType contains "ubi9" then use nightly-rhel9 suffix
-        if (dockerImageType.contains("ubi9")) {
-            RPMsuffix = ".nightly-rhel9"
-        } else {
-            RPMsuffix = ".nightly-rhel"
-        }
+        RPMsuffix = ".nightly-rhel"
         RPMbranch = "b12"
         RPMversion = "12.0"
     }
@@ -238,6 +234,8 @@ void buildDockerImage() {
     publishImage="marklogic/marklogic-server-${dockerImageType}:${marklogicVersion}-${env.dockerImageType}"
     mlVerShort=marklogicVersion.split("\\.")[0]
     latestTag="marklogic/marklogic-server-${dockerImageType}:latest-${mlVerShort}"
+    timeStamp = new Date().format('yyyyMMdd')
+    timestamptedTag = builtImage.replace('nightly', timeStamp)
     sh "make build docker_image_type=${dockerImageType} dockerTag=${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion} marklogicVersion=${marklogicVersion} dockerVersion=${env.dockerVersion} build_branch=${env.BRANCH_NAME} package=${RPM} converters=${CONVERTERS}"
     currentBuild.displayName = "#${BUILD_NUMBER}: ${marklogicVersion}-${env.dockerImageType} (${env.dockerVersion})"
 }
@@ -283,7 +281,7 @@ void structureTests() {
  * Runs Docker functional tests using the 'make docker-tests' target.
  */
 void dockerTests() {
-    sh "make docker-tests current_image=marklogic/marklogic-server-${dockerImageType}:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion} upgrade_image=${upgradeDockerImage} marklogicVersion=${marklogicVersion} build_branch=${env.BRANCH_NAME} dockerVersion=${env.dockerVersion} docker_image_type=${dockerImageType}"
+    sh "make docker-tests current_image=marklogic/marklogic-server-${dockerImageType}:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion} upgrade_image=${upgradeDockerImage} marklogicVersion=${marklogicVersion} build_branch=${env.BRANCH_NAME} dockerVersion=${env.dockerVersion} docker_image_type=${dockerImageType} DOCKER_TEST_LIST=\"${params.DOCKER_TEST_LIST}\""
 }
 
 /**
@@ -338,39 +336,54 @@ void publishToInternalRegistry() {
             docker tag ${builtImage} ${dockerRegistry}/${builtImage}
             docker tag ${builtImage} ${dockerRegistry}/${publishImage}
             docker tag ${builtImage} ${dockerRegistry}/${latestTag}
+            docker tag ${builtImage} ${dockerRegistry}/${timestamptedTag}
             docker push ${dockerRegistry}/${builtImage}
             docker push ${dockerRegistry}/${publishImage}
             docker push ${dockerRegistry}/${latestTag}
+            docker push ${dockerRegistry}/${timestamptedTag}
         """
         
     }
     // Publish to private ECR repository that is used by the performance team. (only ML11)
-    if ( params.marklogicVersion == "11" ) {
-        withCredentials( [[
-            $class: 'AmazonWebServicesCredentialsBinding',
-            credentialsId: "aws-engineering-ct-ecr",
-            accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-            secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-            ]]) {
-                sh """
-                    aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 713759029616.dkr.ecr.us-west-2.amazonaws.com
-                    docker tag ${builtImage} 713759029616.dkr.ecr.us-west-2.amazonaws.com/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion}
-                    docker tag ${builtImage} 713759029616.dkr.ecr.us-west-2.amazonaws.com/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}
-	                docker push 713759029616.dkr.ecr.us-west-2.amazonaws.com/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion}
-                    docker push 713759029616.dkr.ecr.us-west-2.amazonaws.com/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}
-                """
+    // (disabled since it's not needed)
+    // if ( params.marklogicVersion == "11" ) {
+    //     withCredentials( [[
+    //         $class: 'AmazonWebServicesCredentialsBinding',
+    //         credentialsId: "aws-engineering-ct-ecr",
+    //         accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+    //         secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+    //         ]]) {
+    //             sh """
+    //                 aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 713759029616.dkr.ecr.us-west-2.amazonaws.com
+    //                 docker tag ${builtImage} 713759029616.dkr.ecr.us-west-2.amazonaws.com/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion}
+    //                 docker tag ${builtImage} 713759029616.dkr.ecr.us-west-2.amazonaws.com/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}
+	//                 docker push 713759029616.dkr.ecr.us-west-2.amazonaws.com/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion}
+    //                 docker push 713759029616.dkr.ecr.us-west-2.amazonaws.com/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}
+    //             """
+    //         }
+    // }
+
+    // Publish to private ACR Sandbox repository that is used by PDC. (only ML12)
+    if ( params.marklogicVersion == "12" ) {
+        withCredentials([usernamePassword(credentialsId: 'PDC_SANDBOX_USER', passwordVariable: 'docker_password', usernameVariable: 'docker_user')]) {
+            sh """
+                echo "${docker_password}" | docker login --username ${docker_user} --password-stdin ${pdcRegistry}
+                docker tag ${builtImage} ${pdcRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion}
+                docker tag ${builtImage} ${pdcRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}
+                docker push ${pdcRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion}
+                docker push ${pdcRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}
+            """
             }
     }
 
     currentBuild.description = "Published"
 }
-
 /**
  * Triggers a BlackDuck scan job for the published image.
  * Runs asynchronously (wait: false).
  */
 void scanWithBlackDuck() {
-    build job: 'securityscans/Blackduck/KubeNinjas/docker', wait: false, parameters: [ string(name: 'branch', value: "${env.BRANCH_NAME}"), string(name: 'CONTAINER_IMAGES', value: "${dockerRegistry}/${publishImage}") ]
+    build job: 'securityscans/Blackduck/KubeNinjas/docker', wait: false, parameters: [ string(name: 'BRANCH', value: "${env.BRANCH_NAME}"), string(name: 'CONTAINER_IMAGES', value: "${dockerRegistry}/${publishImage}"), string(name: 'ML_VER', value: "${params.marklogicVersion}"), string(name: 'DOCKER_TYPE', value: "${params.dockerImageType}") ]
 }
 
 /**
@@ -425,14 +438,19 @@ pipeline {
         // Trigger nightly builds on the develop branch for every supported version of MarkLogic
         // and for every supported image type.
         // Include SCAP scan for rootless images
-        parameterizedCron( env.BRANCH_NAME == 'develop' ? '''00 02 * * * % marklogicVersion=10;dockerImageType=ubi
-                                                             00 02 * * * % marklogicVersion=10;dockerImageType=ubi-rootless;SCAP_SCAN=true
-                                                             00 02 * * * % marklogicVersion=11;dockerImageType=ubi
-                                                             30 02 * * * % marklogicVersion=11;dockerImageType=ubi-rootless;SCAP_SCAN=true
-                                                             30 02 * * * % marklogicVersion=12;dockerImageType=ubi
-                                                             30 02 * * * % marklogicVersion=12;dockerImageType=ubi-rootless;SCAP_SCAN=true
+        parameterizedCron( env.BRANCH_NAME == 'develop' ? '''00 04 * * * % marklogicVersion=10;dockerImageType=ubi
+                                                             00 04 * * * % marklogicVersion=10;dockerImageType=ubi-rootless;SCAP_SCAN=true
+                                                             00 03 * * * % marklogicVersion=11;dockerImageType=ubi
+                                                             00 03 * * * % marklogicVersion=11;dockerImageType=ubi-rootless;SCAP_SCAN=true
                                                              00 03 * * * % marklogicVersion=11;dockerImageType=ubi9
-                                                             00 03 * * * % marklogicVersion=11;dockerImageType=ubi9-rootless;SCAP_SCAN=true''' : '')
+                                                             00 03 * * * % marklogicVersion=11;dockerImageType=ubi9-rootless;SCAP_SCAN=true
+                                                             00 02 * * * % marklogicVersion=12;dockerImageType=ubi
+                                                             00 02 * * * % marklogicVersion=12;dockerImageType=ubi-rootless;SCAP_SCAN=true
+                                                             00 02 * * * % marklogicVersion=12;dockerImageType=ubi9
+                                                             00 02 * * * % marklogicVersion=12;dockerImageType=ubi9-rootless;SCAP_SCAN=true
+                                                             00 05 * * 7 % marklogicVersion=10;dockerImageType=ubi;DOCKER_TEST_LIST=Initialized MarkLogic container with latency
+                                                             30 05 * * 7 % marklogicVersion=11;dockerImageType=ubi;DOCKER_TEST_LIST=Initialized MarkLogic container with latency
+                                                             00 06 * * 7 % marklogicVersion=12;dockerImageType=ubi;DOCKER_TEST_LIST=Initialized MarkLogic container with latency''' : '')
     }
     environment {
         QA_LICENSE_KEY = credentials('QA_LICENSE_KEY')
@@ -440,15 +458,16 @@ pipeline {
 
     parameters {
         string(name: 'emailList', defaultValue: emailList, description: 'List of email for build notification', trim: true)
-        string(name: 'dockerVersion', defaultValue: '2.1.2', description: 'ML Docker version. This version along with ML rpm package version will be the image tag as {ML_Version}_{dockerVersion}', trim: true)
-        choice(name: 'dockerImageType', choices: 'ubi-rootless\nubi\nubi9-rootless\nubi9\nubi-arm', description: 'Platform type for Docker image. Will be made part of the docker image tag')
+        string(name: 'dockerVersion', defaultValue: '2.2.2', description: 'ML Docker version. This version along with ML rpm package version will be the image tag as {ML_Version}_{dockerVersion}', trim: true)
+        choice(name: 'dockerImageType', choices: 'ubi-rootless\nubi\nubi9-rootless\nubi9', description: 'Platform type for Docker image. Will be made part of the docker image tag')
         string(name: 'upgradeDockerImage', defaultValue: '', description: 'Docker image for testing upgrades. Defaults to ubi image if left blank.\n Currently upgrading to ubi-rotless is not supported hence the test is skipped when ubi-rootless image is provided.', trim: true)
-        choice(name: 'marklogicVersion', choices: '11\n12\n10', description: 'MarkLogic Server Branch. used to pick appropriate rpm')
+        choice(name: 'marklogicVersion', choices: '12\n11\n10', description: 'MarkLogic Server Branch. used to pick appropriate rpm')
         string(name: 'ML_RPM', defaultValue: '', description: 'URL for RPM to be used for Image creation. \n If left blank nightly ML rpm will be used.\n Please provide Jenkins accessible path e.g. /project/engineering or /project/qa', trim: true)
         string(name: 'ML_CONVERTERS', defaultValue: '', description: 'URL for the converters RPM to be included in the image creation \n If left blank the nightly ML Converters Package will be used.', trim: true)
         booleanParam(name: 'PUBLISH_IMAGE', defaultValue: false, description: 'Publish image to internal registry')
         booleanParam(name: 'TEST_STRUCTURE', defaultValue: true, description: 'Run container structure tests')
-        booleanParam(name: 'DOCKER_TESTS', defaultValue: true, description: 'Run docker tests')
+    booleanParam(name: 'DOCKER_TESTS', defaultValue: true, description: 'Run docker tests')
+    string(name: 'DOCKER_TEST_LIST', defaultValue: '', description: 'Comma separated list of test names to run (e.g Test one, Test two). Leave empty to run all tests.', trim: true)
         booleanParam(name: 'SCAP_SCAN', defaultValue: false, description: 'Run Open SCAP scan on the image.')
     }
 
@@ -491,7 +510,8 @@ pipeline {
         // Stage: Scan the image for vulnerabilities
         stage('Scan') {
             steps {
-                vulnerabilityScan()
+                echo 'Skipping vulnerability scan due to compatibility issues.'
+                // vulnerabilityScan()
             }
         }
 

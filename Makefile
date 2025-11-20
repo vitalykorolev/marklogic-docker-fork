@@ -55,7 +55,7 @@ endif
 
 
 # build the image
-	cd src/; docker build ${docker_build_options} -t "${repo_dir}/marklogic-deps-${docker_image_type}:${dockerTag}" -f ../dockerFiles/marklogic-deps-${docker_image_type}:base .
+	cd src/; docker build ${docker_build_options} -t "${repo_dir}/marklogic-deps-${docker_image_type}:${dockerTag}" --build-arg ML_VERSION=${marklogicVersion} -f ../dockerFiles/marklogic-deps-${docker_image_type}:base .
 	cd src/; docker build ${docker_build_options} -t "${repo_dir}/marklogic-server-${docker_image_type}:${dockerTag}" --build-arg BASE_IMAGE=${repo_dir}/marklogic-deps-${docker_image_type}:${dockerTag} --build-arg ML_RPM=${package} --build-arg ML_USER=marklogic_user --build-arg ML_DOCKER_VERSION=${dockerVersion} --build-arg ML_VERSION=${marklogicVersion} --build-arg ML_CONVERTERS=${converters} --build-arg BUILD_BRANCH=${build_branch} --build-arg ML_DOCKER_TYPE=${docker_image_type} -f ../dockerFiles/marklogic-server-${docker_image_type}:base .
 
 # remove temporary files
@@ -86,7 +86,20 @@ docker-tests:
 	python3 -m venv python_env; \
 	source ./python_env/bin/activate; \
 	pip3 install -r requirements.txt; \
-	robot -x docker-tests.xml --outputdir test_results --randomize all --variable TEST_IMAGE:${current_image} --variable UPGRADE_TEST_IMAGE:${upgrade_image} --variable MARKLOGIC_VERSION:${marklogicVersion} --variable BUILD_BRANCH:${build_branch} --variable MARKLOGIC_DOCKER_VERSION:${dockerVersion} --variable IMAGE_TYPE:${docker_image_type} --maxerrorlines 9999 ./docker-tests.robot; \
+	TEST_ARGS=""; \
+	if [ -n "$(DOCKER_TEST_LIST)" ]; then \
+		echo "$(DOCKER_TEST_LIST)" | sed 's/,/\n/g' | while IFS= read -r ITEM; do \
+			ITEM=$$(echo "$$ITEM" | sed -e 's/^ *//' -e 's/ *$$//' -e 's/^"//' -e 's/"$$//'); \
+			[ -n "$$ITEM" ] && echo "--test \"$$ITEM\""; \
+		done | tr '\n' ' ' > /tmp/test_args; \
+		TEST_ARGS=$$(cat /tmp/test_args); \
+		rm -f /tmp/test_args; \
+		echo "Running selected tests: $(DOCKER_TEST_LIST)"; \
+	else \
+		TEST_ARGS="--exclude long_running"; \
+        echo "Running all tests except those tagged with 'long_running'"; \
+	fi; \
+	eval "robot --consolewidth 120 -x docker-tests.xml --outputdir test_results --randomize all --variable TEST_IMAGE:${current_image} --variable UPGRADE_TEST_IMAGE:${upgrade_image} --variable MARKLOGIC_VERSION:${marklogicVersion} --variable BUILD_BRANCH:${build_branch} --variable MARKLOGIC_DOCKER_VERSION:${dockerVersion} --variable IMAGE_TYPE:${docker_image_type} --maxerrorlines 9999 $$TEST_ARGS ./docker-tests.robot"; \
 	deactivate; \
 	rm -rf python_env
 	
@@ -115,7 +128,7 @@ lint:
 .PHONY: scan
 scan:
 ifeq ($(Jenkins),true)
-	docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ${PWD}/scan:/scan anchore/grype:latest --output json --file /scan/report-${docker_image_type}.json ${current_image}
+	docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ${PWD}/scan:/scan anchore/grype:latest --output json --file scan/report-${docker_image_type}.json ${current_image}
 	sudo chown -R builder.ml-eng scan
 	echo -e "Grype scan summary\n------------------" > scan/report-${docker_image_type}.txt
 	jq '.matches[].vulnerability.severity' scan/report-${docker_image_type}.json | sort | uniq -c >> scan/report-${docker_image_type}.txt

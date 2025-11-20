@@ -1063,14 +1063,27 @@ Where is calculated as described in the [Configuring HugePages](https://github.c
 
 # Known Issues and Limitations
 
-1. The image must be run in privileged mode. If the image isn't run as privileged, the calls that use `sudo` in the startup script will fail due to lack of required permissions as the image will not be able to create a user with the required permissions. To run in non-privileged mode, use one of the “rootless” image options.
+1. The root image must be run in privileged mode. If the image isn't run as privileged, the calls that use `sudo` in the startup script will fail due to lack of required permissions as the image will not be able to create a user with the required permissions. To run in non-privileged mode, use one of the “rootless” image options.
 2. Using the "leave" button in the Admin interface to remove a node from a cluster may not succeed, depending on your network configuration. Use the Management API to remove a node from a cluster. See: [https://docs.marklogic.com/REST/DELETE/admin/v1/host-config](https://docs.marklogic.com/REST/DELETE/admin/v1/host-config).
 3. Rejoining a node to a cluster, that had previously left that cluster, may not succeed.
 4. MarkLogic Server will default to the UTC timezone.
 5. The latest released version of RedHat UBI images have known security vulnerabilities.
-    - CVE-2024-6602, CVE-2024-34397, CVE-2024-2236, CVE-2023-7207, CVE-2023-51764, CVE-2023-37920, CVE-2023-32636, CVE-2023-29499, CVE-2023-2650, CVE-2022-4899, CVE-2021-42694, CVE-2021-3997, CVE-2020-35512, CVE-2020-15945, CVE-2019-9937, CVE-2019-9936, CVE-2019-9705, CVE-2019-19244, CVE-2019-17543, CVE-2019-12904, CVE-2019-12900, CVE-2018-20839, CVE-2024-6119, CVE-2024-26462, CVE-2024-2236, CVE-2023-7207, CVE-2023-2953, CVE-2022-4899, CVE-2024-10041, CVE-2022-49043
+    - curl (CVE-2016-5420, CVE-2016-5419, CVE-2016-5421, CVE-2017-3604, CVE-2016-3418, CVE-2017-3605, CVE-2016-0694, CVE-2017-3607, CVE-2017-3608, CVE-2017-3606, CVE-2016-0689, CVE-2017-3609, CVE-2016-0692, CVE-2016-0682, CVE-2016-5420, CVE-2016-5419, CVE-2016-5421, CVE-2023-28322)
+    - elfutils (CVE-2017-3610, CVE-2017-3611, CVE-2017-3612, CVE-2017-3613, CVE-2017-3614, CVE-2017-3615)
+    - gawk (CVE-2017-3616)
+    - gdb (CVE-2017-3617)
+    - glib/glibc (CVE-2016-5420, CVE-2016-5421, CVE-2016-5419, CVE-2016-5419, CVE-2016-5420, CVE-2016-5421, CVE-2019-12450, CVE-2020-6096)
+    - libcap (CVE-2023-2603)
+    - libdb-utils (CVE-2016-0682, CVE-2016-0689, CVE-2016-0692, CVE-2016-0694, CVE-2016-3418, CVE-2017-3604, CVE-2017-3605, CVE-2017-3606, CVE-2017-3607, CVE-2017-3608, CVE-2017-3609, CVE-2017-3610, CVE-2017-3611, CVE-2017-3612, CVE-2017-3613, CVE-2017-3614, CVE-2017-3615, CVE-2017-3616, CVE-2017-3617, CVE-2015-2583, CVE-2015-2626, CVE-2015-2640, CVE-2015-2654, CVE-2015-2656, CVE-2015-4754, CVE-2015-2624, CVE-2015-4784, CVE-2015-4787, CVE-2015-4789, CVE-2015-4785, CVE-2015-4786, CVE-2015-4783, CVE-2015-4764, CVE-2015-4780, CVE-2015-4790, CVE-2015-4776, CVE-2015-4775, CVE-2015-4778, CVE-2015-4777, CVE-2015-4782, CVE-2015-4781, CVE-2015-4774)
+    - libcroco (CVE-2017-8871)
+    - libksba (CVE-2022-3515, CVE-2022-47629)
+    - libssh (CVE-2023-6004)
+    - libxml2 (CVE-2022-23308)
+    - nspr (CVE-2016-1951)
+    - pam (CVE-2022-28321)
+    - systemd (CVE-2020-13776)
 
-These libraries are included in the RedHat UBI base images but, to-date, no fixes have been made available. Even though these libraries may be present in the base image that is used by MarkLogic Server, they are not used by MarkLogic Server itself, hence there is no impact or mitigation required.
+These packages are included in the RedHat UBI base images but, to-date, no fixes have been made available. Even though these libraries may be present in the base image that is used by MarkLogic Server, they are not used by MarkLogic Server itself, hence there is no impact or mitigation required.
 
 6. As part of the hardening process, the following packages are removed from the image: `vim-minimal`, `cups-client`, `cups-libs`, `tar`, `python3-pip-wheel`, `platform-python`, `python3-libs`, `platform-python-setuptools`, `avahi-libs`, `binutils`, `expat`, `libarchive`, `python3`, `python3-libs`, `python-unversioned-command`. These packages are not required for the operation of MarkLogic Server and are removed to reduce the attack surface of the image. If you require any of these packages, you can install them in your own Dockerfile.
 
