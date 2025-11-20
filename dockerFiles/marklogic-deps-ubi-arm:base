@@ -4,15 +4,19 @@
 #
 ###############################################################
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.10-1763613452
+    
+# 8.10-1295 works with https://bed-artifactory.bedford.progress.com:443/artifactory/ml-rpm-release-tierpoint/devdependencies/libnsl-2.28-251.el8_10.16.aarch64.rpm
+
 LABEL "com.marklogic.maintainer"="docker@marklogic.com"
 
 ###############################################################
 # install libnsl rpm package
 ###############################################################
 
-RUN microdnf -y update \
-    && rpm -i https://download.rockylinux.org/pub/rocky/8/BaseOS/aarch64/kickstart/Packages/l/libnsl-2.28-251.el8_10.2.aarch64.rpm
+RUN echo microdnf -y update \
+    && rpm -i https://download.rockylinux.org/pub/rocky/8/BaseOS/aarch64/os/Packages/l/libnsl-2.28-251.el8_10.25.aarch64.rpm
+    # && rpm -i https://bed-artifactory.bedford.progress.com:443/artifactory/ml-rpm-release-tierpoint/devdependencies/libnsl-2.28-251.el8_10.16.aarch64.rpm
 
 ###############################################################
 # install networking, base deps and tzdata for timezone
