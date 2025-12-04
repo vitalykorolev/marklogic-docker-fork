@@ -197,7 +197,7 @@ void copyRPMs() {
     else if (marklogicVersion == "12") {
         RPMsuffix = ".nightly-rhel"
         RPMbranch = "b12"
-        RPMversion = "12.0"
+        RPMversion = "12.1"
     }
     else {
         error "Invalid value in marklogicVersion parameter."
