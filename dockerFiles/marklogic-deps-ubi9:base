@@ -4,14 +4,15 @@
 #
 ###############################################################
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.6-1760515502
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.7-1764794109
 LABEL "com.marklogic.maintainer"="docker@marklogic.com"
 
 ###############################################################
 # install libnsl rpm package
 ###############################################################
 
-RUN rpm -i https://download.rockylinux.org/vault/rocky/9.6/BaseOS/x86_64/os/Packages/l/libnsl-2.34-168.el9_6.23.x86_64.rpm
+RUN microdnf -y update \
+    && rpm -i https://download.rockylinux.org/pub/rocky/9/BaseOS/x86_64/os/Packages/l/libnsl-2.34-231.el9_7.2.x86_64.rpm
 
 ###############################################################
 # install networking, base deps and tzdata for timezone
