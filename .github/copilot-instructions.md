@@ -207,7 +207,7 @@ secrets:
 2. **Leave button**: Admin UI "leave" may not work; use Management API instead
 3. **Timezone**: Containers default to UTC unless `TZ` environment variable is set
 4. **HugePages**: Container allocates up to 3/8 of memory limit as HugePages by default (override with `ML_HUGEPAGES_TOTAL`)
-5. **Upgrade process**: Must update file ownership to `1000:100` when upgrading to rootless images
+5. **Upgrade process**: Must update file ownership to `1000:100` (`marklogic_user:users`) when upgrading to rootless images
 
 ## CI/CD Pipeline (Jenkinsfile)
 
