@@ -40,7 +40,7 @@ If you are using Copilot/AI to modify this repo, follow the **How Copilot Should
 - Use `make lint` to run ShellCheck + Hadolint.
 - Use `make test` for `structure-test` + Robot tests.
 - This repo builds images for `linux/amd64` by default.
-- macOS note: `make structure-test` uses `sed -i` in a GNU-compatible way; on macOS you may need GNU sed (`gsed`) or run the build/test in a Linux container/VM.
+- macOS note: `make structure-test` uses GNU-style `sed -i` (GNU sed syntax); on macOS you may need GNU sed (`gsed`) or run the build/test in a Linux container/VM.
 
 ## Project Overview
 
