@@ -1,4 +1,4 @@
-// Copyright © 2018-2025 Progress Software Corporation and/or its subsidiaries or affiliates. All Rights Reserved.
+// Copyright © 2018-2026 Progress Software Corporation and/or its subsidiaries or affiliates. All Rights Reserved.
 // This Jenkinsfile defines internal MarkLogic build pipeline.
 // The pipeline builds, tests, scans, and optionally publishes MarkLogic Docker images.
 // It can be triggered manually, by pull requests, or on a schedule.
@@ -13,7 +13,8 @@ emailList = 'vitaly.korolev@progress.com, Barkha.Choithani@progress.com, Sumanth
 emailSecList = 'Mahalakshmi.Srinivasan@progress.com'
 gitCredID = 'marklogic-builder-github'
 dockerRegistry = 'ml-docker-db-dev-tierpoint.bed-artifactory.bedford.progress.com'
-pdcRegistry = 'sandboxpdc.azurecr.io'
+pdcSbRegistry = 'sandboxpdc.azurecr.io'
+pdcDevRegistry = 'marklogicclouddev.azurecr.io'
 JIRA_ID_PATTERN = /(?i)(MLE)-\d{3,6}/
 JIRA_ID = ''
 LINT_OUTPUT = ''
@@ -324,9 +325,9 @@ void vulnerabilityScan() {
 
 /**
  * Publishes the built Docker image to the internal Artifactory registry.
- * Also publishes ML11 images to a private AWS ECR repository.
+ * Also publishes ML12 images to private Azure ACR repositories (PDC).
  * Tags the image with multiple tags (version-specific, branch-specific, latest).
- * Requires Artifactory and AWS credentials.
+ * Requires Artifactory and Azure ACR credentials.
  */
 void publishToInternalRegistry() {
     withCredentials([usernamePassword(credentialsId: 'builder-credentials-artifactory', passwordVariable: 'docker_password', usernameVariable: 'docker_user')]) {
@@ -363,17 +364,28 @@ void publishToInternalRegistry() {
     //         }
     // }
 
-    // Publish to private ACR Sandbox repository that is used by PDC. (only ML12)
+    // Publish to private ACR repositories that are used by PDC. (only ML12)
     if ( params.marklogicVersion == "12" ) {
+        // Publish to Sandbox PDC registry
         withCredentials([usernamePassword(credentialsId: 'PDC_SANDBOX_USER', passwordVariable: 'docker_password', usernameVariable: 'docker_user')]) {
             sh """
-                echo "${docker_password}" | docker login --username ${docker_user} --password-stdin ${pdcRegistry}
-                docker tag ${builtImage} ${pdcRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion}
-                docker tag ${builtImage} ${pdcRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}
-                docker push ${pdcRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion}
-                docker push ${pdcRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}
+                echo "${docker_password}" | docker login --username ${docker_user} --password-stdin ${pdcSbRegistry}
+                docker tag ${builtImage} ${pdcSbRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion}
+                docker tag ${builtImage} ${pdcSbRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}
+                docker push ${pdcSbRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion}
+                docker push ${pdcSbRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}
             """
-            }
+        }
+        // Publish to Dev PDC registry
+        withCredentials([usernamePassword(credentialsId: 'pdc-azure-cr', passwordVariable: 'docker_password', usernameVariable: 'docker_user')]) {
+            sh """
+                echo "${docker_password}" | docker login --username ${docker_user} --password-stdin ${pdcDevRegistry}
+                docker tag ${builtImage} ${pdcDevRegistry}/marklogicdb-custom:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion}
+                docker tag ${builtImage} ${pdcDevRegistry}/marklogicdb-custom:${marklogicVersion}-${env.dockerImageType}
+                docker push ${pdcDevRegistry}/marklogicdb-custom:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion}
+                docker push ${pdcDevRegistry}/marklogicdb-custom:${marklogicVersion}-${env.dockerImageType}
+            """
+        }
     }
 
     currentBuild.description = "Published"
