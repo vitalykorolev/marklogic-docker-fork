@@ -40,6 +40,11 @@ QA_LICENSE_KEY environment variable needs to be set to a valid license key for l
 Some tests expect certain variable to have valid values. For example, if UBI rootless image is used, specify image type for individual tests:
 `robot --variable TEST_IMAGE:marklogic/marklogic-server-ubi-rootless:internal --variable IMAGE_TYPE:ubi-rootless --test 'Initialized MarkLogic container with config overrides' docker-tests.robot`
 
+### Resource Requirements for Dynamic Host Tests
+The "Dynamic Host Cluster Test" and "Dynamic Host Cluster Concurrency Join Test" require significant system resources as they create 13 containers (3 cluster nodes + 10 dynamic hosts) simultaneously. 
+
+**Note:** These tests may fail with "Connection refused" errors if insufficient resources are allocated. Increase Docker's CPU and memory limits in Docker Desktop/Rancher Desktop preferences if you encounter initialization failures.
+
 For a quick start guide for Robot framework see https://robotframework.org/#getting-started
 Full user guide is available at https://robotframework.org/robotframework/#user-guide
 
