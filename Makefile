@@ -8,7 +8,8 @@ docker_image_type?=ubi
 upgrade_docker_image_type?=ubi
 upgrade_image?=${repo_dir}/marklogic-server-${upgrade_docker_image_type}:${dockerTag}
 current_image?=${repo_dir}/marklogic-server-${docker_image_type}:${dockerTag}
-open_scap_version?=0.1.74
+# Latest release tag can be found here: https://github.com/ComplianceAsCode/content/releases
+open_scap_version?=0.1.79
 
 #***************************************************************************
 # build docker image
