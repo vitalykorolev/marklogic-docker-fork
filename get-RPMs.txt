@@ -1,0 +1,16 @@
+# RPMs
+# use axel for faster download if available
+wget https://bed-artifactory.bedford.progress.com:443/artifactory/ml-rpm-dev-tierpoint/b12/server/MarkLogic-12.1.nightly-rhel.x86_64.rpm
+wget https://bed-artifactory.bedford.progress.com:443/artifactory/ml-rpm-dev-tierpoint/b12/converters/MarkLogicConverters-12.1.nightly-rhel.x86_64.rpm
+
+wget https://bed-artifactory.bedford.progress.com:443/artifactory/ml-rpm-dev-tierpoint/b11/server/MarkLogic-11.3.nightly-rhel.x86_64.rpm
+wget https://bed-artifactory.bedford.progress.com:443/artifactory/ml-rpm-dev-tierpoint/b11/converters/MarkLogicConverters-11.3.nightly-rhel.x86_64.rpm
+wget https://bed-artifactory.bedford.progress.com:443/artifactory/ml-rpm-dev-tierpoint/b11/server/MarkLogic-11.3.nightly-rhel9.x86_64.rpm
+wget https://bed-artifactory.bedford.progress.com:443/artifactory/ml-rpm-dev-tierpoint/b11/converters/MarkLogicConverters-11.3.nightly-rhel9.x86_64.rpm
+
+wget https://bed-artifactory.bedford.progress.com:443/artifactory/ml-rpm-dev-tierpoint/b10/server/MarkLogic-10.0-nightly.x86_64.rpm
+wget https://bed-artifactory.bedford.progress.com:443/artifactory/ml-rpm-dev-tierpoint/b10/converters/MarkLogicConverters-10.0-nightly.x86_64.rpm
+
+
+wget --no-verbose https://bed-artifactory.bedford.progress.com:443/artifactory/ml-rpm-release-tierpoint/b11/server/MarkLogic-11.3.1-rhel.x86_64.rpm
+wget --no-verbose https://bed-artifactory.bedford.progress.com:443/artifactory/ml-rpm-release-tierpoint/b11/converters/MarkLogicConverters-11.3.1-rhel.x86_64.rpm
