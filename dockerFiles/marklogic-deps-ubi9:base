@@ -1,19 +1,18 @@
 ###############################################################
 #
-#   Copyright © 2018-2025 Progress Software Corporation and/or its subsidiaries or affiliates. All Rights Reserved.
+#   Copyright © 2018-2026 Progress Software Corporation and/or its subsidiaries or affiliates. All Rights Reserved.
 #
 ###############################################################
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.6-1760515502
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.7-1771346502
 LABEL "com.marklogic.maintainer"="docker@marklogic.com"
 
 ###############################################################
 # install libnsl rpm package
 ###############################################################
 
-RUN curl -Lso libnsl.rpm https://bed-artifactory.bedford.progress.com:443/artifactory/ml-rpm-release-tierpoint/devdependencies/libnsl-2.34-168.el9_6.23.x86_64.rpm \
-    && rpm -i libnsl.rpm \
-    && rm -f libnsl.rpm
+RUN microdnf -y update \
+    && rpm -i https://repo.almalinux.org/almalinux/9/BaseOS/x86_64/os/Packages/libnsl-2.34-231.el9_7.10.x86_64.rpm
 
 ###############################################################
 # install networking, base deps and tzdata for timezone

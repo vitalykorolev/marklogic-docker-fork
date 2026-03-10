@@ -1,4 +1,4 @@
-// Copyright © 2018-2025 Progress Software Corporation and/or its subsidiaries or affiliates. All Rights Reserved.
+// Copyright © 2018-2026 Progress Software Corporation and/or its subsidiaries or affiliates. All Rights Reserved.
 // This Jenkinsfile defines internal MarkLogic build pipeline.
 // The pipeline builds, tests, scans, and optionally publishes MarkLogic Docker images.
 // It can be triggered manually, by pull requests, or on a schedule.
@@ -13,7 +13,8 @@ emailList = 'vitaly.korolev@progress.com, Barkha.Choithani@progress.com, Sumanth
 emailSecList = 'Mahalakshmi.Srinivasan@progress.com'
 gitCredID = 'marklogic-builder-github'
 dockerRegistry = 'ml-docker-db-dev-tierpoint.bed-artifactory.bedford.progress.com'
-pdcRegistry = 'sandboxpdc.azurecr.io'
+pdcSbRegistry = 'sandboxpdc.azurecr.io'
+pdcDevRegistry = 'marklogicclouddev.azurecr.io'
 JIRA_ID_PATTERN = /(?i)(MLE)-\d{3,6}/
 JIRA_ID = ''
 LINT_OUTPUT = ''
@@ -324,9 +325,9 @@ void vulnerabilityScan() {
 
 /**
  * Publishes the built Docker image to the internal Artifactory registry.
- * Also publishes ML11 images to a private AWS ECR repository.
+ * Also publishes ML12 images to private Azure ACR repositories (PDC).
  * Tags the image with multiple tags (version-specific, branch-specific, latest).
- * Requires Artifactory and AWS credentials.
+ * Requires Artifactory and Azure ACR credentials.
  */
 void publishToInternalRegistry() {
     withCredentials([usernamePassword(credentialsId: 'builder-credentials-artifactory', passwordVariable: 'docker_password', usernameVariable: 'docker_user')]) {
@@ -363,17 +364,28 @@ void publishToInternalRegistry() {
     //         }
     // }
 
-    // Publish to private ACR Sandbox repository that is used by PDC. (only ML12)
+    // Publish to private ACR repositories that are used by PDC. (only ML12)
     if ( params.marklogicVersion == "12" ) {
+        // Publish to Sandbox PDC registry
         withCredentials([usernamePassword(credentialsId: 'PDC_SANDBOX_USER', passwordVariable: 'docker_password', usernameVariable: 'docker_user')]) {
             sh """
-                echo "${docker_password}" | docker login --username ${docker_user} --password-stdin ${pdcRegistry}
-                docker tag ${builtImage} ${pdcRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion}
-                docker tag ${builtImage} ${pdcRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}
-                docker push ${pdcRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion}
-                docker push ${pdcRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}
+                echo "${docker_password}" | docker login --username ${docker_user} --password-stdin ${pdcSbRegistry}
+                docker tag ${builtImage} ${pdcSbRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion}
+                docker tag ${builtImage} ${pdcSbRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}
+                docker push ${pdcSbRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion}
+                docker push ${pdcSbRegistry}/ml-docker-nightly:${marklogicVersion}-${env.dockerImageType}
             """
-            }
+        }
+        // Publish to Dev PDC registry
+        withCredentials([usernamePassword(credentialsId: 'pdc-azure-cr', passwordVariable: 'docker_password', usernameVariable: 'docker_user')]) {
+            sh """
+                echo "${docker_password}" | docker login --username ${docker_user} --password-stdin ${pdcDevRegistry}
+                docker tag ${builtImage} ${pdcDevRegistry}/marklogicdb-custom:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion}
+                docker tag ${builtImage} ${pdcDevRegistry}/marklogicdb-custom:${marklogicVersion}-${env.dockerImageType}
+                docker push ${pdcDevRegistry}/marklogicdb-custom:${marklogicVersion}-${env.dockerImageType}-${env.dockerVersion}
+                docker push ${pdcDevRegistry}/marklogicdb-custom:${marklogicVersion}-${env.dockerImageType}
+            """
+        }
     }
 
     currentBuild.description = "Published"
@@ -383,7 +395,7 @@ void publishToInternalRegistry() {
  * Runs asynchronously (wait: false).
  */
 void scanWithBlackDuck() {
-    build job: 'securityscans/Blackduck/KubeNinjas/docker', wait: false, parameters: [ string(name: 'BRANCH', value: "${env.BRANCH_NAME}"), string(name: 'CONTAINER_IMAGES', value: "${dockerRegistry}/${publishImage}"), string(name: 'ML_VER', value: "${params.marklogicVersion}") ]
+    build job: 'securityscans/Blackduck/KubeNinjas/docker', wait: false, parameters: [ string(name: 'BRANCH', value: "${env.BRANCH_NAME}"), string(name: 'CONTAINER_IMAGES', value: "${dockerRegistry}/${publishImage}"), string(name: 'ML_VER', value: "${params.marklogicVersion}"), string(name: 'DOCKER_TYPE', value: "${params.dockerImageType}") ]
 }
 
 /**
@@ -458,7 +470,7 @@ pipeline {
 
     parameters {
         string(name: 'emailList', defaultValue: emailList, description: 'List of email for build notification', trim: true)
-        string(name: 'dockerVersion', defaultValue: '2.2.3', description: 'ML Docker version. This version along with ML rpm package version will be the image tag as {ML_Version}_{dockerVersion}', trim: true)
+        string(name: 'dockerVersion', defaultValue: '2.2.4', description: 'ML Docker version. This value is used as part of the Docker image tag, which is built as ${marklogicVersion}-${dockerImageType}-${dockerVersion}', trim: true)
         choice(name: 'dockerImageType', choices: 'ubi-rootless\nubi\nubi9-rootless\nubi9', description: 'Platform type for Docker image. Will be made part of the docker image tag')
         string(name: 'upgradeDockerImage', defaultValue: '', description: 'Docker image for testing upgrades. Defaults to ubi image if left blank.\n Currently upgrading to ubi-rotless is not supported hence the test is skipped when ubi-rootless image is provided.', trim: true)
         choice(name: 'marklogicVersion', choices: '12\n11\n10', description: 'MarkLogic Server Branch. used to pick appropriate rpm')

@@ -12,8 +12,8 @@ Library    DateTime
 ${DEFAULT ADMIN USER}    test_admin
 ${DEFAULT ADMIN PASS}    test_admin_pass
 ${SPEC CHARS ADMIN PASS}    Admin@2$s%^&*!
-${TEST_IMAGE}    %{DOCKER_TEST_IMAGE=progressofficial/marklogic-db:11.3.1-ubi-rootless-2.2.3}
-${UPGRADE_TEST_IMAGE}    progressofficial/marklogic-db:11.3.1-ubi-rootless-2.2.3
+${TEST_IMAGE}    %{DOCKER_TEST_IMAGE=progressofficial/marklogic-db:11.3.1-ubi-rootless-2.2.4}
+${UPGRADE_TEST_IMAGE}    progressofficial/marklogic-db:${MARKLOGIC_VERSION}-${IMAGE_TYPE}-${MARKLOGIC_DOCKER_VERSION}
 ${DOCKER TIMEOUT}    300s
 ${LICENSE KEY}    %{QA_LICENSE_KEY=none}
 ${LICENSEE}    MarkLogic - Version 9 QA Test License
@@ -22,7 +22,7 @@ ${BUILD_BRANCH}    release_2.2.1
 ${IMAGE_TYPE}    ubi-rootless
 ${VOL_NAME}    MarkLogic_vol_1
 ${VOL_INFO}    src=${VOL_NAME},dst=/var/opt/MarkLogic
-${MARKLOGIC_DOCKER_VERSION}    2.2.3
+${MARKLOGIC_DOCKER_VERSION}    2.2.4
 ${TEST_RESULTS_DIR}    test_results
 
 *** Keywords ***
@@ -465,15 +465,14 @@ Remove All Dynamic Hosts on port ${port} for group ${group}
     ${host_count}=    Get Length    ${host_ids}
     IF    ${host_count} > 0
         ${auth}    ${headers}=    Generate digest authorization for    ${DEFAULT ADMIN USER}    ${DEFAULT ADMIN PASS}
-        ${header}=    Create Dictionary    Content-type=application/json    Accept=application/json
-        ${dynamic_host_dict}=    Create Dictionary    dynamic-host=${host_ids}
-        ${json_body}=    Create Dictionary    dynamic-hosts=${dynamic_host_dict}
-        # Create session and send DELETE request
+        ${header}=    Create Dictionary    Accept=application/json
+        # Create session and delete hosts one by one using URL parameters
         ${response}=    Create Digest Session    RestSession    url=http://localhost:${port}    headers=${headers}    auth=${auth}
-        ${response}=    DELETE On Session    RestSession
-        ...            url=/manage/v2/clusters/${group}/dynamic-hosts
-        ...            json=${json_body}
-        ...            headers=${header}
+        FOR    ${host_id}    IN    @{host_ids}
+            ${response}=    DELETE On Session    RestSession
+            ...            url=/manage/v2/clusters/${group}/dynamic-hosts/${host_id}
+            ...            headers=${header}
+        END
         Log    Removed ${host_count} dynamic hosts from group ${group}
     ELSE
         Log    No dynamic hosts to remove from group ${group}
@@ -583,7 +582,7 @@ Dynamic Host Join Fails When Token Expires ${group}
     Sleep    10s    # Wait longer than the PT5S token duration
     ${status}=    Run Keyword And Return Status    Init dynamic host 8101 with token ${token}
     Should Be Equal    ${status}    ${FALSE}    Join succeeded with expired token when it should have failed
-    Verify Dynamic Host Count on port 7102 for group ${group} equals 2
+    Verify Dynamic Host Count on port 7102 for group ${group} equals 1
 
 Dynamic Host Join Fails After Token Revoked ${group}
     [Documentation]    Tests that authentication fails after the token is revoked by the admin.
@@ -594,7 +593,7 @@ Dynamic Host Join Fails After Token Revoked ${group}
     ${header}=    Create Dictionary    Content-Type=application/xml
     ${xml_body}=    Set Variable    <dynamic-host-tokens><token>${token}</token></dynamic-host-tokens>
     ${response}=    Create Digest Session    RestSession    url=http://localhost:8002    headers=${headers}    auth=${auth}
-    ${response}=    DELETE On Session    RestSession    url=/manage/v2/clusters/Default/dynamic-host-token    data=${xml_body}    headers=${header}
+    ${response}=    DELETE On Session    RestSession    url=/manage/v2/clusters/${group}/dynamic-host-token    data=${xml_body}    headers=${header}
 
     ${status}=    Run Keyword And Return Status    Init dynamic host 8201 with token ${token}
     Should Be Equal    ${status}    ${FALSE}    Join succeeded with revoked token when it should have failed
