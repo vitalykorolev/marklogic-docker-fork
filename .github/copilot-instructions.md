@@ -27,6 +27,8 @@ If you are using Copilot/AI to modify this repo, follow the **How Copilot Should
 - **Dockerfile templates (`dockerFiles/*`)**
   - Keep the multi-stage + flattened final stage pattern (`COPY --from=builder / /`).
   - Keep ownership/permissions correct for rootless (`marklogic_user:users`, UID 1000).
+  - When a Dockerfile installs RPMs from trusted external repos such as AlmaLinux or Rocky Linux, avoid broad `microdnf update` steps that can move `glibc` ahead of a pinned compatibility package.
+  - If a compatibility package must stay pinned, prefer targeted package upgrades over blanket updates, and validate downstream steps that rely on current repo state such as `microdnf reinstall tzdata`.
   - If you add/remove files, update `test/structure-test.yaml` accordingly.
 - **Env vars / secrets**
   - Keep naming consistent across `README.md`, `docker-compose/*.yaml`, Dockerfiles, and tests.
@@ -40,6 +42,7 @@ If you are using Copilot/AI to modify this repo, follow the **How Copilot Should
 - Use `make lint` to run ShellCheck + Hadolint.
 - Use `make test` for `structure-test` + Robot tests.
 - This repo builds images for `linux/amd64` by default.
+- When changing dependency images, validate both layers: build the `marklogic-deps-*` image and then verify MarkLogic RPM installation or the corresponding `marklogic-server-*` build path.
 - macOS note: `make structure-test` uses GNU-style `sed -i` (GNU sed syntax); on macOS you may need GNU sed (`gsed`) or run the build/test in a Linux container/VM.
 
 ## Project Overview
@@ -219,6 +222,8 @@ The pipeline supports:
 - Image publishing to Artifactory and Azure Container Registry
 
 **Pipeline stages:** Checkout → Lint → Build → Structure Test → Docker Tests → Scan → Publish
+
+**PR workflow note:** Open the pull request against `upstream/develop`, not a fork branch, because Jenkins validates PRs from the upstream repository as `KubeNinjas/docker/Docker_CI/PR-<number>` jobs.
 
 ## Contributing Notes
 
