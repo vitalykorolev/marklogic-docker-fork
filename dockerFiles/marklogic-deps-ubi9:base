@@ -8,11 +8,11 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal:9.7-1771346502
 LABEL "com.marklogic.maintainer"="docker@marklogic.com"
 
 ###############################################################
-# install libnsl rpm package
+# install libnsl rpm package from trusted repositories
 ###############################################################
 
-RUN microdnf -y update \
-    && rpm -i https://repo.almalinux.org/almalinux/9/BaseOS/x86_64/os/Packages/libnsl-2.34-231.el9_7.10.x86_64.rpm
+RUN rpm -i https://repo.almalinux.org/almalinux/9/BaseOS/x86_64/os/Packages/libnsl-2.34-231.el9_7.10.x86_64.rpm \
+    && microdnf clean all
 
 ###############################################################
 # install networking, base deps and tzdata for timezone
